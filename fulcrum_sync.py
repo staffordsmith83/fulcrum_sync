@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+#  TODO: attributes are not imported into temp feature layers
+#  TODO: Allow user configurable API Key
+#  TODO: move apps list population to only happen once Get Apps List 'pushButton' is pressed
+
+
 """
 /***************************************************************************
  FulcrumSync
@@ -272,24 +277,23 @@ class FulcrumSync:
         # TODO: move this to be provided by user in some config file, or from dialog and saved somewhere locally.
         self.API_TOKEN = "2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24"
 
-
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = FulcrumSyncDialog()
 
-        # Get the list of Fulcrum Apps and display
-        # TODO: move this to only happen once Get Apps List 'pushButton' is pressed
+        
+        ###########################################
+        # Get the list of Fulcrum Apps and display       
         appsList = getAppsList(self.API_TOKEN)
+        self.dlg.listWidget.clear()
         self.dlg.listWidget.addItems(appsList)
 
+        ############################################
+        # Set up the connections between the dialog clicks and the methods
         self.dlg.listWidget.itemClicked.connect(self.getSelectedLayer)
-
         self.dlg.pushButton_3.clicked.connect(lambda: self.getGeoJsonFromSelectedLayer())
-        
-        
-
 
 
         # show the dialog
