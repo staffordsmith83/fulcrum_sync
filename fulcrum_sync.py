@@ -2,7 +2,7 @@
 #  TODO: attributes are not imported into temp feature layers
 #  TODO: Allow user configurable API Key
 #  TODO: move apps list population to only happen once Get Apps List 'pushButton' is pressed
-
+#  TODO: deal with possibly unbound geotype variable, line 261
 
 """
 /***************************************************************************
