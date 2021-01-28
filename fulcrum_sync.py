@@ -3,6 +3,8 @@
 #  TODO: Allow user configurable API Key
 #  TODO: move apps list population to only happen once Get Apps List 'pushButton' is pressed
 #  TODO: deal with possibly unbound geotype variable, line 261
+#   TODO: BUGFIX - if plugin is opened a second time, it will load two copies of the selected layer...
+#               this is regardless of whether that layer has been connected before. So the load point method is being called twice.
 
 """
 /***************************************************************************
@@ -26,8 +28,8 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.core import QgsProject, QgsVectorLayer, QgsJsonUtils, QgsWkbTypes, QgsFields, edit
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.core import QgsProject, QgsVectorLayer, QgsJsonUtils, QgsWkbTypes, QgsField, QgsFields, edit
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.gui import QgsMessageBar
@@ -39,30 +41,7 @@ from .resources import *
 from .fulcrum_sync_dialog import FulcrumSyncDialog
 import os.path
 import requests
-
-###############################
-    # Custom functions as static methods
-def getAppsList(API_TOKEN):
-
-    url = "https://api.fulcrumapp.com/api/v2/forms.json"
-
-    querystring = {"schema":"true","page":"1","per_page":"20000"}
-
-    headers = {
-        "Accept": "application/json",
-        "X-ApiToken": API_TOKEN
-    }
-
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    jsonResponse = response.json()
-
-    appsList = []
-    for form in jsonResponse['forms']:
-        appsList.append(form['name'])
-
-    return(appsList)
-
-
+import json
 
 
 class FulcrumSync:
@@ -95,6 +74,10 @@ class FulcrumSync:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Fulcrum Sync')
+
+        # Some custom declarations
+        self.selectedLayer = ''
+        self.API_TOKEN = ''
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -243,57 +226,119 @@ class FulcrumSync:
 
 
     def createLayerFromGeojson(self, geoj):
-        # PyQGIS has a parser class for JSON and GeoJSON
-        feats = QgsJsonUtils.stringToFeatureList(geoj, QgsFields(), None)
-        # if there are features in the list
-        if len(feats) > 0:
-            # define the geometry type of the layer
-            geom_type = feats[0].geometry().type()
-            if geom_type == QgsWkbTypes.PointGeometry:
-                geotype = "MultiPoint"
-            elif geom_type == QgsWkbTypes.LineGeometry:
-                geotype = "MultiLineString"
-            elif geom_type == QgsWkbTypes.PolygonGeometry:
-                geotype = "MultiLinePolygon"
-            else:
-                iface.messageBar().pushMessage("DEBUGGING", "Geometry Type Not Declared in Geojson")
-            # create a new memory layer with the features
-            vl = QgsVectorLayer(geotype, self.selectedLayer, "memory")
-            # vl = QgsVectorLayer("MultiPoint", "geojson_layer", "memory")
-            with edit(vl):
-                vl.addFeatures(feats)
-                vl.updateExtents()
-            # add this brand new layer
-            QgsProject.instance().addMapLayer(vl)
-        else:
-            print("no features found in the geoJSON")
+        # # PyQGIS has a parser class for JSON and GeoJSON
+        # feats = QgsJsonUtils.stringToFeatureList(geoj, QgsFields(), None)
+        # # if there are features in the list
+        # if len(feats) > 0:
+        #     # define the geometry type of the layer
+        #     geom_type = feats[0].geometry().type()
+        #     if geom_type == QgsWkbTypes.PointGeometry:
+        #         geotype = "MultiPoint"
+        #     elif geom_type == QgsWkbTypes.LineGeometry:
+        #         geotype = "MultiLineString"
+        #     elif geom_type == QgsWkbTypes.PolygonGeometry:
+        #         geotype = "MultiLinePolygon"
+        #     else:
+        #         iface.messageBar().pushMessage("DEBUGGING", "Geometry Type Not Declared in Geojson")
+        #     # create a new memory layer with the features
+        #     vl = QgsVectorLayer(geotype, self.selectedLayer, "memory")
+        #     # vl = QgsVectorLayer("MultiPoint", "geojson_layer", "memory")
+        #     pr = vl.dataProvider()  # Dunno what this is...
+        #     pr.addAttributes([QgsField("name", QVariant.Int)])
+        #     with edit(vl):
+        #         vl.addFeatures(feats)
+        #         vl.updateExtents()
+        #         vl.updateFields()
+        #     # add this brand new layer
+        #     QgsProject.instance().addMapLayer(vl)
+        # else:
+        #     print("no features found in the geoJSON")
+
+        iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
 
 
+    def getAppsList(self):
+
+        url = "https://api.fulcrumapp.com/api/v2/forms.json"
+
+        querystring = {"schema":"true","page":"1","per_page":"20000"}
+
+        headers = {
+            "Accept": "application/json",
+            "X-ApiToken": self.API_TOKEN
+        }
+
+        response = requests.request("GET", url, headers=headers, params=querystring)
+        jsonResponse = response.json()
+
+        appsList = []
+        for form in jsonResponse['forms']:
+            appsList.append(form['name'])
+
+        self.dlg.listWidget.clear()
+        self.dlg.listWidget.addItems(appsList)
+    
+    def testApiKey(self):
+        url = "https://api.fulcrumapp.com/api/v2/users.json"
+
+        querystring = {"page":"1","per_page":"20000"}
+
+        headers = {
+            "Accept": "application/json",
+            "X-ApiToken": "2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24"
+        }
+
+        response = requests.request("GET", url, headers=headers, params=querystring)
+
+        responseDict = json.loads(response.text)
+        userName = (responseDict["user"]["first_name"] + " " + responseDict["user"]["last_name"] )
+
+        self.dlg.userNameTextbox.setPlainText(f'API succesfully validated: Registered username is {userName}')
+        
+        return userName
+        
+
+    
     def run(self):
         """Run method that performs all the real work"""
 
-        ###############################
-        # API token here temporarily...
-        # TODO: move this to be provided by user in some config file, or from dialog and saved somewhere locally.
-        self.API_TOKEN = "2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24"
-
+        
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = FulcrumSyncDialog()
+            
+        else:
+            #  Disconnect button so it doesnt try to call the methods twice if we reload
+            try:
+                self.dlg.pushButton_3.clicked.disconnect()
+            except:
+                pass
 
-        
-        ###########################################
-        # Get the list of Fulcrum Apps and display       
-        appsList = getAppsList(self.API_TOKEN)
-        self.dlg.listWidget.clear()
-        self.dlg.listWidget.addItems(appsList)
+        ###############################
+        # API token here temporarily...
+        # TODO: move this to be provided by user in some config file, or from dialog and saved somewhere locally.
+        # Temporarily fill the apiInput field with our hardcoded key
+        self.dlg.apiInput.setPlainText("2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24")
 
+        # Get the value from the text input field and save it to variable
+        self.API_TOKEN = self.dlg.apiInput.toPlainText()
+
+       
         ############################################
         # Set up the connections between the dialog clicks and the methods
+
+        # For the API Key
+        self.dlg.apiButton.clicked.connect(lambda: self.testApiKey())
+
+        # For the APps List
+        self.dlg.getAppsButton.clicked.connect(lambda: self.getAppsList())
+
+        # For the Layer Select
         self.dlg.listWidget.itemClicked.connect(self.getSelectedLayer)
         self.dlg.pushButton_3.clicked.connect(lambda: self.getGeoJsonFromSelectedLayer())
+
 
 
         # show the dialog
