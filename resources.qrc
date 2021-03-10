@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/plugins/fulcrum_sync" >
         <file>icon.png</file>
+        <file>winyama_logo_transparent.png</file>
     </qresource>
 </RCC>

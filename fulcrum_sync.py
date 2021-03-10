@@ -4,6 +4,7 @@
 #  TODO: deal with possibly unbound geotype variable, line 261
 #   TODO: BUGFIX - if plugin is opened a second time, it will load two copies of the selected layer...
 #               this is regardless of whether that layer has been connected before. So the load point method is being called twice.
+# TODO: when storing or reading apiKey, should the s=QgsSettings variable be a global class variable instead of scoped to the indiv functions?
 
 """
 /***************************************************************************
@@ -27,7 +28,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.core import QgsProject, QgsVectorLayer, QgsJsonUtils, QgsWkbTypes, QgsField, QgsFields, edit
+from qgis.core import QgsProject, QgsVectorLayer, QgsJsonUtils, QgsWkbTypes, QgsField, QgsFields, edit, QgsSettings
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -198,28 +199,32 @@ class FulcrumSync:
             self.iface.removeToolBarIcon(action)
 
     def getSelectedLayer(self):
-        selectedLayer = self.dlg.listWidget.selectedItems()[0].text()
-        # iface.messageBar().pushMessage("DEBUGGING", selectedLayer)
-        self.selectedLayer = selectedLayer
+        self.selectedLayer = self.dlg.listWidget.selectedItems()[0].text()
+
+        # Enable the load points button, now that we have a layer
+        self.dlg.loadPointsButton.setEnabled(True)
 
     def getGeoJsonFromSelectedLayer(self):
-        url = "https://api.fulcrumapp.com/api/v2/query"
 
-        tableSelector = f"SELECT * FROM \"{self.selectedLayer}\""
-        # iface.messageBar().pushMessage("DEBUGGING", tableSelector)
-        querystring = {"q": tableSelector, "format": "geojson", "headers": "false",
-                       "metadata": "false", "arrays": "false", "page": "1", "per_page": "20000"}
+        if self.selectedLayer:
+            url = "https://api.fulcrumapp.com/api/v2/query"
 
-        headers = {
-            "Accept": "application/json",
-            "X-ApiToken": self.API_TOKEN
-        }
+            tableSelector = f"SELECT * FROM \"{self.selectedLayer}\""
+            querystring = {"q": tableSelector, "format": "geojson", "headers": "false",
+                           "metadata": "false", "arrays": "false", "page": "1", "per_page": "20000"}
 
-        response = requests.request(
-            "GET", url, headers=headers, params=querystring)
+            headers = {
+                "Accept": "application/json",
+                "X-ApiToken": self.API_TOKEN
+            }
 
-        self.createLayerFromGeojson(response.text)
-        # iface.messageBar().pushMessage("DEBUGGING", response.text)
+            response = requests.request(
+                "GET", url, headers=headers, params=querystring)
+
+            self.createLayerFromGeojson(response.text)
+
+        else:
+            iface.messageBar().pushMessage("No Layer Selected")
 
     def createLayerFromGeojson(self, geoj):
         # if there are features in the list
@@ -229,62 +234,103 @@ class FulcrumSync:
             # {"type":"FeatureCollection","fulcrum":{"view_name":""},"features":[]}
 
             # add the layer to the list of layers
-            iface.messageBar().pushMessage("DEBUGGING", geoj)
             iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
 
         else:
-            print("no features found in the geoJSON")
+            iface.messageBar().pushMessage("No features found in the geoJSON")
 
     def getAppsList(self):
 
         url = "https://api.fulcrumapp.com/api/v2/forms.json"
-
         querystring = {"schema": "true", "page": "1", "per_page": "20000"}
-
         headers = {
             "Accept": "application/json",
             "X-ApiToken": self.API_TOKEN
         }
 
-        response = requests.request(
-            "GET", url, headers=headers, params=querystring)
-        jsonResponse = response.json()
+        try:
+            response = requests.request(
+                "GET", url, headers=headers, params=querystring)
+            jsonResponse = response.json()
 
-        appsList = []
-        for form in jsonResponse['forms']:
-            appsList.append(form['name'])
+            appsList = []
+            for form in jsonResponse['forms']:
+                appsList.append(form['name'])
 
-        self.dlg.listWidget.clear()
-        self.dlg.listWidget.addItems(appsList)
+            self.dlg.listWidget.clear()
+            self.dlg.listWidget.addItems(appsList)
 
-    def testApiKey(self):
-        # First get the value of the API Key QDialog box and store it in self.API_TOKEN
-        self.API_TOKEN = self.dlg.apiInput.toPlainText()
+        except:
+            self.dlg.apiInput.setPlainText(f'API Key Invalid')
 
+    def registerApiKey(self):
+        # First get the value of the API Key QDialog box and store in local variable
+        apiKey = self.dlg.apiInput.toPlainText()
+
+        if self.testApiKey(apiKey):
+            self.storeApiKey(apiKey)
+            self.recallApiKey()
+
+        else:
+            iface.messageBar().pushMessage("Could not register API Key")
+
+    def testApiKey(self, apiKey):
         # Setup the request
         url = "https://api.fulcrumapp.com/api/v2/users.json"
         querystring = {"page": "1", "per_page": "20000"}
         headers = {
             "Accept": "application/json",
-            "X-ApiToken": self.API_TOKEN
+            "X-ApiToken": apiKey
         }
 
-        # Make the GET request
-        response = requests.request(
-            "GET", url, headers=headers, params=querystring)
-
         try:
+            # Make the GET request
+            response = requests.request(
+                "GET", url, headers=headers, params=querystring)
+
             responseDict = json.loads(response.text)
             userName = (responseDict["user"]["first_name"] +
                         " " + responseDict["user"]["last_name"])
 
-            self.dlg.userNameTextbox.setPlainText(
+            self.dlg.apiInput.setPlainText(
                 f'API succesfully validated: Registered username is {userName}')
 
-            return userName
+            # Disable the register button
+            self.dlg.registerButton.setEnabled(False)
+
+            result = True
+
         except:
-            # iface.messageBar().pushMessage("API Key Invalid")
-            self.dlg.userNameTextbox.setPlainText(f'API Key Invalid')
+            iface.messageBar().pushMessage("API Key failed test")
+            self.forgetApiKey()
+            result = False
+
+        return result
+
+    def forgetApiKey(self):
+        s = QgsSettings()
+        s.remove("ApiKey")
+        self.dlg.apiInput.setPlainText(
+            'Please paste a Fulcrum API Key here and click REGISTER')
+
+        # Enable the register button. TODO: Is this the best time to do it?
+        self.dlg.registerButton.setEnabled(True)
+
+    def storeApiKey(self, apiKey):
+        s = QgsSettings()
+        s.setValue("ApiKey", apiKey)
+
+    def recallApiKey(self):
+        try:
+            s = QgsSettings()
+            apiKey = s.value("ApiKey")
+
+            self.API_TOKEN = apiKey
+
+        except:
+            self.dlg.apiInput.setPlainText(
+                'Please paste a Fulcrum API Key here and click REGISTER')
+            iface.messageBar().pushMessage("Could Not Recall API Key")
 
     def run(self):
         """Run method that performs all the real work"""
@@ -298,25 +344,27 @@ class FulcrumSync:
         else:
             #  Disconnect button so it doesnt try to call the methods twice if we reload
             try:
-                self.dlg.pushButton_3.clicked.disconnect()
+                self.dlg.loadPointsButton.clicked.disconnect()
             except:
                 pass
 
-        # Temporarily fill the apiInput field with our hardcoded key
-        # self.dlg.apiInput.setPlainText(self.API_TOKEN)
+        # Attempt to read in a saved API Key from global QGIS storage
+        self.recallApiKey()
+        self.testApiKey(self.API_TOKEN)
 
         ############################################
         # Set up the connections between the dialog clicks and the methods
 
         # For the API Key
-        self.dlg.apiButton.clicked.connect(lambda: self.testApiKey())
+        self.dlg.registerButton.clicked.connect(lambda: self.registerApiKey())
+        self.dlg.forgetButton.clicked.connect(lambda: self.forgetApiKey())
 
         # For the APps List
         self.dlg.getAppsButton.clicked.connect(lambda: self.getAppsList())
 
         # For the Layer Select
         self.dlg.listWidget.itemClicked.connect(self.getSelectedLayer)
-        self.dlg.pushButton_3.clicked.connect(
+        self.dlg.loadPointsButton.clicked.connect(
             lambda: self.getGeoJsonFromSelectedLayer())
 
         # show the dialog
