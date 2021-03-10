@@ -76,9 +76,9 @@ class FulcrumSync:
 
         # Some custom declarations
         self.selectedLayer = ''
-        
+
         ###########################################################################
-        ## DEFAULT API KEY HERE - set to empty '' after testing
+        # DEFAULT API KEY HERE - set to empty '' after testing
         ###########################################################################
         # self.API_TOKEN = '86525570d371b23fb3085277dba6e2f8a2fc0fd68256d14007329604948175e2656a7bb35bc81db1'
         self.API_TOKEN = ''
@@ -102,18 +102,17 @@ class FulcrumSync:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('FulcrumSync', message)
 
-
     def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+            self,
+            icon_path,
+            text,
+            callback,
+            enabled_flag=True,
+            add_to_menu=True,
+            add_to_toolbar=True,
+            status_tip=None,
+            whats_this=None,
+            parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -190,7 +189,6 @@ class FulcrumSync:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -199,58 +197,57 @@ class FulcrumSync:
                 action)
             self.iface.removeToolBarIcon(action)
 
-
     def getSelectedLayer(self):
         selectedLayer = self.dlg.listWidget.selectedItems()[0].text()
         # iface.messageBar().pushMessage("DEBUGGING", selectedLayer)
         self.selectedLayer = selectedLayer
-    
 
     def getGeoJsonFromSelectedLayer(self):
         url = "https://api.fulcrumapp.com/api/v2/query"
 
         tableSelector = f"SELECT * FROM \"{self.selectedLayer}\""
         # iface.messageBar().pushMessage("DEBUGGING", tableSelector)
-        querystring = {"q":tableSelector,"format":"geojson","headers":"false","metadata":"false","arrays":"false","page":"1","per_page":"20000"}
+        querystring = {"q": tableSelector, "format": "geojson", "headers": "false",
+                       "metadata": "false", "arrays": "false", "page": "1", "per_page": "20000"}
 
         headers = {
             "Accept": "application/json",
             "X-ApiToken": self.API_TOKEN
         }
 
-        response = requests.request("GET", url, headers=headers, params=querystring)
+        response = requests.request(
+            "GET", url, headers=headers, params=querystring)
 
         self.createLayerFromGeojson(response.text)
         # iface.messageBar().pushMessage("DEBUGGING", response.text)
 
-
-    def createLayerFromGeojson(self, geoj):     
+    def createLayerFromGeojson(self, geoj):
         # if there are features in the list
-        if len(geoj) > 0:   
+        if len(geoj) > 0:
             # TODO len(geoj) does not get number of features...
-            # Empty App returns: 
+            # Empty App returns:
             # {"type":"FeatureCollection","fulcrum":{"view_name":""},"features":[]}
 
             # add the layer to the list of layers
             iface.messageBar().pushMessage("DEBUGGING", geoj)
             iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
-            
+
         else:
             print("no features found in the geoJSON")
-
 
     def getAppsList(self):
 
         url = "https://api.fulcrumapp.com/api/v2/forms.json"
 
-        querystring = {"schema":"true","page":"1","per_page":"20000"}
+        querystring = {"schema": "true", "page": "1", "per_page": "20000"}
 
         headers = {
             "Accept": "application/json",
             "X-ApiToken": self.API_TOKEN
         }
 
-        response = requests.request("GET", url, headers=headers, params=querystring)
+        response = requests.request(
+            "GET", url, headers=headers, params=querystring)
         jsonResponse = response.json()
 
         appsList = []
@@ -259,47 +256,45 @@ class FulcrumSync:
 
         self.dlg.listWidget.clear()
         self.dlg.listWidget.addItems(appsList)
-    
+
     def testApiKey(self):
         # First get the value of the API Key QDialog box and store it in self.API_TOKEN
         self.API_TOKEN = self.dlg.apiInput.toPlainText()
 
-        
-        
+        # Setup the request
         url = "https://api.fulcrumapp.com/api/v2/users.json"
-
-        querystring = {"page":"1","per_page":"20000"}
-
+        querystring = {"page": "1", "per_page": "20000"}
         headers = {
             "Accept": "application/json",
             "X-ApiToken": self.API_TOKEN
         }
 
-        response = requests.request("GET", url, headers=headers, params=querystring)
+        # Make the GET request
+        response = requests.request(
+            "GET", url, headers=headers, params=querystring)
 
         try:
             responseDict = json.loads(response.text)
-            userName = (responseDict["user"]["first_name"] + " " + responseDict["user"]["last_name"] )
+            userName = (responseDict["user"]["first_name"] +
+                        " " + responseDict["user"]["last_name"])
 
-            self.dlg.userNameTextbox.setPlainText(f'API succesfully validated: Registered username is {userName}')
-            
+            self.dlg.userNameTextbox.setPlainText(
+                f'API succesfully validated: Registered username is {userName}')
+
             return userName
         except:
             # iface.messageBar().pushMessage("API Key Invalid")
             self.dlg.userNameTextbox.setPlainText(f'API Key Invalid')
 
-        
-
-    
     def run(self):
         """Run method that performs all the real work"""
-       
+
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = FulcrumSyncDialog()
-            
+
         else:
             #  Disconnect button so it doesnt try to call the methods twice if we reload
             try:
@@ -310,8 +305,6 @@ class FulcrumSync:
         # Temporarily fill the apiInput field with our hardcoded key
         # self.dlg.apiInput.setPlainText(self.API_TOKEN)
 
-
-       
         ############################################
         # Set up the connections between the dialog clicks and the methods
 
@@ -323,9 +316,8 @@ class FulcrumSync:
 
         # For the Layer Select
         self.dlg.listWidget.itemClicked.connect(self.getSelectedLayer)
-        self.dlg.pushButton_3.clicked.connect(lambda: self.getGeoJsonFromSelectedLayer())
-
-
+        self.dlg.pushButton_3.clicked.connect(
+            lambda: self.getGeoJsonFromSelectedLayer())
 
         # show the dialog
         self.dlg.show()
@@ -334,9 +326,3 @@ class FulcrumSync:
         # See if OK was pressed
         if result:
             pass
-            
-            
-
-
-
-
