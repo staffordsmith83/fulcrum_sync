@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#  TODO: attributes are not imported into temp feature layers
 #  TODO: Allow user configurable API Key
 #  TODO: move apps list population to only happen once Get Apps List 'pushButton' is pressed
 #  TODO: deal with possibly unbound geotype variable, line 261
@@ -81,7 +80,8 @@ class FulcrumSync:
         ###########################################################################
         ## DEFAULT API KEY HERE - set to empty '' after testing
         ###########################################################################
-        self.API_TOKEN = '86525570d371b23fb3085277dba6e2f8a2fc0fd68256d14007329604948175e2656a7bb35bc81db1'
+        # self.API_TOKEN = '86525570d371b23fb3085277dba6e2f8a2fc0fd68256d14007329604948175e2656a7bb35bc81db1'
+        self.API_TOKEN = ''
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -261,6 +261,11 @@ class FulcrumSync:
         self.dlg.listWidget.addItems(appsList)
     
     def testApiKey(self):
+        # First get the value of the API Key QDialog box and store it in self.API_TOKEN
+        self.API_TOKEN = self.dlg.apiInput.toPlainText()
+
+        
+        
         url = "https://api.fulcrumapp.com/api/v2/users.json"
 
         querystring = {"page":"1","per_page":"20000"}
@@ -272,12 +277,17 @@ class FulcrumSync:
 
         response = requests.request("GET", url, headers=headers, params=querystring)
 
-        responseDict = json.loads(response.text)
-        userName = (responseDict["user"]["first_name"] + " " + responseDict["user"]["last_name"] )
+        try:
+            responseDict = json.loads(response.text)
+            userName = (responseDict["user"]["first_name"] + " " + responseDict["user"]["last_name"] )
 
-        self.dlg.userNameTextbox.setPlainText(f'API succesfully validated: Registered username is {userName}')
-        
-        return userName
+            self.dlg.userNameTextbox.setPlainText(f'API succesfully validated: Registered username is {userName}')
+            
+            return userName
+        except:
+            # iface.messageBar().pushMessage("API Key Invalid")
+            self.dlg.userNameTextbox.setPlainText(f'API Key Invalid')
+
         
 
     
@@ -298,10 +308,8 @@ class FulcrumSync:
                 pass
 
         # Temporarily fill the apiInput field with our hardcoded key
-        self.dlg.apiInput.setPlainText(self.API_TOKEN)
+        # self.dlg.apiInput.setPlainText(self.API_TOKEN)
 
-        # Get the value from the text input field and save it to variable
-        self.API_TOKEN = self.dlg.apiInput.toPlainText()
 
        
         ############################################

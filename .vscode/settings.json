@@ -21,10 +21,10 @@
 
     // Set Python interpreter
     //"python.pythonPath": "${workspaceFolder}/.venv_tests/Scripts/python.exe",
-    "python.pythonPath": "C:/OSGeo4W64/bin/python-qgis-ltr.bat",
+    "python.pythonPath": "C:\\Users\\staff\\miniconda3\\python.exe",
 
     // Formatting with black
-    "python.formatting.provider": "black",
+    "python.formatting.provider": "autopep8",
     "python.formatting.blackPath": "${workspaceFolder}\\.venv_dev\\Scripts\\black.exe",
     "python.formatting.blackArgs": ["--target-version=py37",],
 

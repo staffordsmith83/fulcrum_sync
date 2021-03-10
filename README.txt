@@ -1,32 +1,20 @@
-Plugin Builder Results
+TODO List:
 
-Your plugin FulcrumSync was created in:
-    C:/DEVELOPMENT\fulcrum_sync
+Errors to Handle:
 
-Your QGIS plugin directory is located at:
-    C:/Users/staff/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins
+Error when doing TEST API whne no API key specified
+2021-03-10T12:20:02     WARNING    Traceback (most recent call last):
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 311, in 
+              self.dlg.apiButton.clicked.connect(lambda: self.testApiKey())
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 275, in testApiKey
+              responseDict = json.loads(response.text)
+              File "C:\OSGEO4~1\apps\Python37\lib\json\__init__.py", line 348, in loads
+              return _default_decoder.decode(s)
+              File "C:\OSGEO4~1\apps\Python37\lib\json\decoder.py", line 337, in decode
+              obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+              File "C:\OSGEO4~1\apps\Python37\lib\json\decoder.py", line 355, in raw_decode
+              raise JSONDecodeError("Expecting value", s, err.value) from None
+             json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+             
 
-What's Next:
 
-  * Copy the entire directory containing your new plugin to the QGIS plugin
-    directory
-
-  * Compile the resources file using pyrcc5
-
-  * Run the tests (``make test``)
-
-  * Test the plugin by enabling it in the QGIS plugin manager
-
-  * Customize it by editing the implementation file: ``fulcrum_sync.py``
-
-  * Create your own custom icon, replacing the default icon.png
-
-  * Modify your user interface by opening FulcrumSync_dialog_base.ui in Qt Designer
-
-  * You can use the Makefile to compile your Ui and resource files when
-    you make changes. This requires GNU make (gmake)
-
-For more information, see the PyQGIS Developer Cookbook at:
-http://www.qgis.org/pyqgis-cookbook/index.html
-
-(C) 2011-2018 GeoApt LLC - geoapt.com
