@@ -77,7 +77,11 @@ class FulcrumSync:
 
         # Some custom declarations
         self.selectedLayer = ''
-        self.API_TOKEN = ''
+        
+        ###########################################################################
+        ## DEFAULT API KEY HERE - set to empty '' after testing
+        ###########################################################################
+        self.API_TOKEN = '86525570d371b23fb3085277dba6e2f8a2fc0fd68256d14007329604948175e2656a7bb35bc81db1'
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -198,18 +202,15 @@ class FulcrumSync:
 
     def getSelectedLayer(self):
         selectedLayer = self.dlg.listWidget.selectedItems()[0].text()
-        iface.messageBar().pushMessage("DEBUGGING", selectedLayer)
+        # iface.messageBar().pushMessage("DEBUGGING", selectedLayer)
         self.selectedLayer = selectedLayer
     
 
     def getGeoJsonFromSelectedLayer(self):
-
-        
-        # selectedLayer = self.dlg.listWidget.selectedItems()[0]
         url = "https://api.fulcrumapp.com/api/v2/query"
 
         tableSelector = f"SELECT * FROM \"{self.selectedLayer}\""
-        iface.messageBar().pushMessage("DEBUGGING", tableSelector)
+        # iface.messageBar().pushMessage("DEBUGGING", tableSelector)
         querystring = {"q":tableSelector,"format":"geojson","headers":"false","metadata":"false","arrays":"false","page":"1","per_page":"20000"}
 
         headers = {
@@ -218,43 +219,24 @@ class FulcrumSync:
         }
 
         response = requests.request("GET", url, headers=headers, params=querystring)
-        # jsonResponse = response.json()
 
         self.createLayerFromGeojson(response.text)
-        iface.messageBar().pushMessage("DEBUGGING", response.text)
+        # iface.messageBar().pushMessage("DEBUGGING", response.text)
 
 
+    def createLayerFromGeojson(self, geoj):     
+        # if there are features in the list
+        if len(geoj) > 0:   
+            # TODO len(geoj) does not get number of features...
+            # Empty App returns: 
+            # {"type":"FeatureCollection","fulcrum":{"view_name":""},"features":[]}
 
-    def createLayerFromGeojson(self, geoj):
-        # # PyQGIS has a parser class for JSON and GeoJSON
-        # feats = QgsJsonUtils.stringToFeatureList(geoj, QgsFields(), None)
-        # # if there are features in the list
-        # if len(feats) > 0:
-        #     # define the geometry type of the layer
-        #     geom_type = feats[0].geometry().type()
-        #     if geom_type == QgsWkbTypes.PointGeometry:
-        #         geotype = "MultiPoint"
-        #     elif geom_type == QgsWkbTypes.LineGeometry:
-        #         geotype = "MultiLineString"
-        #     elif geom_type == QgsWkbTypes.PolygonGeometry:
-        #         geotype = "MultiLinePolygon"
-        #     else:
-        #         iface.messageBar().pushMessage("DEBUGGING", "Geometry Type Not Declared in Geojson")
-        #     # create a new memory layer with the features
-        #     vl = QgsVectorLayer(geotype, self.selectedLayer, "memory")
-        #     # vl = QgsVectorLayer("MultiPoint", "geojson_layer", "memory")
-        #     pr = vl.dataProvider()  # Dunno what this is...
-        #     pr.addAttributes([QgsField("name", QVariant.Int)])
-        #     with edit(vl):
-        #         vl.addFeatures(feats)
-        #         vl.updateExtents()
-        #         vl.updateFields()
-        #     # add this brand new layer
-        #     QgsProject.instance().addMapLayer(vl)
-        # else:
-        #     print("no features found in the geoJSON")
-
-        iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
+            # add the layer to the list of layers
+            iface.messageBar().pushMessage("DEBUGGING", geoj)
+            iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
+            
+        else:
+            print("no features found in the geoJSON")
 
 
     def getAppsList(self):
@@ -285,7 +267,7 @@ class FulcrumSync:
 
         headers = {
             "Accept": "application/json",
-            "X-ApiToken": "2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24"
+            "X-ApiToken": self.API_TOKEN
         }
 
         response = requests.request("GET", url, headers=headers, params=querystring)
@@ -301,8 +283,7 @@ class FulcrumSync:
     
     def run(self):
         """Run method that performs all the real work"""
-
-        
+       
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
@@ -316,11 +297,8 @@ class FulcrumSync:
             except:
                 pass
 
-        ###############################
-        # API token here temporarily...
-        # TODO: move this to be provided by user in some config file, or from dialog and saved somewhere locally.
         # Temporarily fill the apiInput field with our hardcoded key
-        self.dlg.apiInput.setPlainText("2b6d6363d014e69d8eff078c093c0a06df71f68a45cd88123780386de4eced40e7a317c8ddc56e24")
+        self.dlg.apiInput.setPlainText(self.API_TOKEN)
 
         # Get the value from the text input field and save it to variable
         self.API_TOKEN = self.dlg.apiInput.toPlainText()
