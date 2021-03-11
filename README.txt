@@ -37,3 +37,6 @@ Error when clicking Get Apps List:
 
 Not loading API Key or any message on first load
 
+
+When loaded with saved API Key, click Forget, then past and click register:
+    result: error message 'Could Not Register API Key'
