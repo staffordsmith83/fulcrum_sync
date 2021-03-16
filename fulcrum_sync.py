@@ -234,10 +234,36 @@ class FulcrumSync:
         if len(geoj) > 0:
 
             # add the layer to the list of layers
-            iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
+            vlayer = QgsVectorLayer(geoj, self.selectedLayer, 'ogr')
+
+            # Now handle any integerList type fields, as some versions of QGIS have a problem with this:
+            self.handleIntegerLists(vlayer)
+            QgsProject.instance().addMapLayer(vlayer)
+            iface.messageBar().pushMessage("Handled Integer List Fields to prevent QGIS errors")
 
         else:
             iface.messageBar().pushMessage("No features found in the geoJSON")
+
+    
+    def handleIntegerLists(self, geoj_layer):
+        # QGIS does not import geojson with IntegerList type fields correctly.
+        # For now, we will remove these fields, but a better solution is needed.
+        # Some users may have integerList fields that are important in their data.
+
+        ###############################
+        # TODO: l.deleteAttribute(idx) method fails because our layer is not editable.
+        # In the data provider, the uri is actually the raw string object in memory from our code.
+        # perhaps we need to write this out to a temporary location.
+        # Should this be in a local database maybe?
+        # Can the Fulcrum API return a different format than geojson?
+        
+        l = geoj_layer
+        for f in l.fields():
+            if f.typeName() == "IntegerList":
+                idx= l.fields().indexFromName(f.name())
+                l.deleteAttribute(idx)
+                iface.messageBar().pushMessage('field deleted: ' + f.name())
+
 
     def getAppsList(self):
 
