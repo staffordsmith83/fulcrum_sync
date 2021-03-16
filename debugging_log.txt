@@ -1,0 +1,86 @@
+TODO List:
+
+Errors to Handle:
+
+Error when doing TEST API whne no API key specified
+2021-03-10T12:20:02     WARNING    Traceback (most recent call last):
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 311, in 
+              self.dlg.apiButton.clicked.connect(lambda: self.testApiKey())
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 275, in testApiKey
+              responseDict = json.loads(response.text)
+              File "C:\OSGEO4~1\apps\Python37\lib\json\__init__.py", line 348, in loads
+              return _default_decoder.decode(s)
+              File "C:\OSGEO4~1\apps\Python37\lib\json\decoder.py", line 337, in decode
+              obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+              File "C:\OSGEO4~1\apps\Python37\lib\json\decoder.py", line 355, in raw_decode
+              raise JSONDecodeError("Expecting value", s, err.value) from None
+             json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+             
+
+
+Error when clicking Get Apps List:
+2021-03-10T13:42:40     WARNING    Traceback (most recent call last):
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 336, in 
+              self.dlg.getAppsButton.clicked.connect(lambda: self.getAppsList())
+              File "C:/Users/staff/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\fulcrum_sync\fulcrum_sync.py", line 252, in getAppsList
+              jsonResponse = response.json()
+              File "C:\OSGEO4~1\apps\Python37\lib\site-packages\requests\models.py", line 898, in json
+              return complexjson.loads(self.text, **kwargs)
+              File "C:\OSGEO4~1\apps\Python37\lib\site-packages\simplejson\__init__.py", line 518, in loads
+              return _default_decoder.decode(s)
+              File "C:\OSGEO4~1\apps\Python37\lib\site-packages\simplejson\decoder.py", line 370, in decode
+              obj, end = self.raw_decode(s)
+              File "C:\OSGEO4~1\apps\Python37\lib\site-packages\simplejson\decoder.py", line 400, in raw_decode
+              return self.scan_once(s, idx=_w(s, idx).end())
+             simplejson.errors.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+
+Not loading API Key or any message on first load
+
+
+When loaded with saved API Key, click Forget, then past and click register:
+    result: error message 'Could Not Register API Key'
+
+
+
+ iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
+    The resulting layer that loads in QGIS TOC has wrong field lengths defined.
+    This makes a probelm when trying to export the selected layer.
+
+    Is it dependent of the source geojson string?
+    -   NO. Also does it with tested and valid geojson. Still ahs 0 field lengths.
+
+    Is this the reason why the export will not work?
+    -   NO. When loading a geojson from file, then exporting it, then its OK.
+    -   I think maybe we cant do it properly if using response.text as our input...
+    
+
+   Problem with this property of each feature in the geojson:
+    "photos_captions":[null]        when added as a layer becomes = (1:0)
+
+   "photos_captions": [null,null],  when added as a layer becomes = (2:0,0)
+
+   QGIS interprets this field type as an integer list.
+   THIS IS A QGIS BUG https://gis.stackexchange.com/questions/341443/why-does-qgis-convert-integerlists-into-something-strange-and-how-do-i-process-t
+
+
+
+   Works with QGIS 3.10 Long Term release, but error happens with 3.16
+
+   Error happens regardless of whether the layer is added froma  saved geojson file, or
+   from the response of the API request in code (without saving out to a file midway)
+
+   Problem is - QIGS cant reliably read in the integer list fields. Need to convert this to something before reading in...
+   Even ogr2ogr cant do it - error messages:
+
+   For the field photos_captions field:
+   Warning 1: The output driver does not natively support IntegerList type for field photos_captions. Misconversion can happen. -mapFieldType can be used to control field type conversion.
+   ERROR 6: Can't create fields of type IntegerList on shapefile layers.
+
+   "Warning 1: The output driver does not natively support StringList type for field photos. Misconversion can happen. -mapFieldType can be used to control field type conversion.
+ERROR 6: Can't create fields of type StringList on shapefile layers."
+
+
+
+   WORKS if I make all values for the 'field photos_captions' field = NULL
+   

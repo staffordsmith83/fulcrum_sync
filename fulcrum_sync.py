@@ -221,6 +221,9 @@ class FulcrumSync:
             response = requests.request(
                 "GET", url, headers=headers, params=querystring)
 
+            # For Debugging:
+            iface.messageBar().pushMessage(response.text)
+            
             self.createLayerFromGeojson(response.text)
 
         else:
@@ -229,9 +232,6 @@ class FulcrumSync:
     def createLayerFromGeojson(self, geoj):
         # if there are features in the list
         if len(geoj) > 0:
-            # TODO len(geoj) does not get number of features...
-            # Empty App returns:
-            # {"type":"FeatureCollection","fulcrum":{"view_name":""},"features":[]}
 
             # add the layer to the list of layers
             iface.addVectorLayer(geoj, self.selectedLayer, 'ogr')
